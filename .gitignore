@@ -5,7 +5,9 @@ __pycache__/
 
 # Checkpoints and trained models
 checkpoints/
+!checkpoints/hagrid/gen_000/best.pt
 *.pt
+!checkpoints/**/best.pt
 *.pth
 *.ckpt
 
