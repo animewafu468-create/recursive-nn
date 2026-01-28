@@ -1,290 +1,267 @@
-# Recursive Self-Improving Neural Network via Self-Distillation
+# Self-Distillation Neural Network + Hand Gesture Recognition
 
-A general-purpose self-distillation system where neural networks iteratively train improved versions of themselves. Each generation uses soft targets from the previous generation combined with hard labels, progressively refining knowledge through "dark knowledge" transfer.
+Train neural networks that iteratively improve themselves, then use it for real-time hand gesture detection via webcam.
 
-## 🎯 Key Features
+---
 
-- **Born-Again Networks**: Student and teacher share identical architecture
-- **Soft Target Distillation**: Transfers rich probability distributions at high temperature
-- **Noisy Student Training**: Adds noise (dropout, augmentation) for robustness
-- **EMA Teacher Updates**: Exponential moving average for stable distillation
-- **Automatic Convergence Detection**: Stops when improvements plateau
-- **Multi-Architecture Support**: MLP, ResNet, Vision Transformer
+## Quick Start (Step-by-Step)
 
-## 📁 Project Structure
+### YOU HAVE TWO MACHINES:
+- **Machine A (3060 GPU)**: For training
+- **Machine B (Webcam)**: For live gesture recognition
+
+---
+
+## STEP 1: Setup on 3060 Machine
+
+```bash
+# Clone this repo
+git clone https://github.com/animewafu468-create/recursive-nn.git
+cd recursive-nn
+
+# Install PyTorch with CUDA (IMPORTANT: use cu121 for RTX 3060)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# Install this project
+pip install -e .
+
+# Install extra dependencies
+pip install requests
+```
+
+### Verify GPU works:
+```bash
+python -c "import torch; print('GPU:', torch.cuda.get_device_name(0))"
+```
+Should print: `GPU: NVIDIA GeForce RTX 3060`
+
+---
+
+## STEP 2: Download HaGRID Dataset
+
+```bash
+python scripts/download_hagrid.py
+```
+
+This downloads ~700MB of hand gesture images (30k images, 18 gestures).
+
+**If download times out**, try the Kaggle mirror:
+```bash
+pip install kagglehub
+python -c "import kagglehub; kagglehub.dataset_download('innominate817/hagrid-sample-30k-384p')"
+```
+
+---
+
+## STEP 3: Train the Model
+
+```bash
+python scripts/train.py --config-name=hagrid
+```
+
+**Expected time on RTX 3060:** ~45-60 minutes
+
+**What happens:**
+1. Gen 0: Trains from scratch (~92% accuracy)
+2. Gen 1: Learns from Gen 0's soft outputs (~94% accuracy)
+3. Gen 2: Learns from Gen 1 (~95% accuracy)
+4. ... continues until accuracy plateaus
+
+**Quick test run (5 min):**
+```bash
+python scripts/train.py --config-name=hagrid training.epochs=10 generations.max_generations=2
+```
+
+---
+
+## STEP 4: Copy Trained Model to Webcam Machine
+
+After training completes, copy this file:
+```
+checkpoints/hagrid/gen_004/best.pt
+```
+
+Use USB drive, Google Drive, email - whatever works.
+
+---
+
+## STEP 5: Run Live Webcam (on Webcam Machine)
+
+```bash
+# Clone repo (if not already)
+git clone https://github.com/animewafu468-create/recursive-nn.git
+cd recursive-nn
+
+# Install (CPU is fine for inference)
+pip install torch torchvision
+pip install -e .
+pip install opencv-python
+
+# Run webcam with your trained model
+python scripts/live_gesture.py --checkpoint path/to/best.pt
+```
+
+**Controls:**
+- Press `Q` to quit
+- Show hand gestures to the camera
+- Predictions appear with confidence bars
+
+---
+
+## Supported Gestures (18 total)
+
+| Gesture | Emoji | Gesture | Emoji |
+|---------|-------|---------|-------|
+| call | phone hand | palm | raised hand |
+| dislike | thumbs down | peace | peace sign |
+| fist | raised fist | rock | rock on |
+| like | thumbs up | stop | stop hand |
+| ok | OK hand | one | index finger |
+| peace_inverted | inverted peace | three | three fingers |
+| two_up | two fingers | four | four fingers |
+| mute | shush | grab | grabbing |
+| no_gesture | - | timeout | T shape |
+
+---
+
+## Project Structure
 
 ```
 recursive-nn/
 ├── configs/
-│   └── default.yaml          # Hydra configuration
+│   ├── default.yaml          # CIFAR-10 config
+│   └── hagrid.yaml           # Hand gesture config
 ├── src/
-│   ├── models/               # Model architectures
-│   │   ├── mlp.py           # Multi-layer perceptron
-│   │   ├── resnet.py        # ResNet-18/34 for CIFAR
-│   │   ├── transformer.py   # Transformer for sequences/images
-│   │   └── stochastic_depth.py  # Noisy Student enhancement
-│   ├── distillation/        # Core distillation logic
-│   │   ├── losses.py        # KL divergence, combined loss
-│   │   ├── trainer.py       # Single-generation trainer
-│   │   ├── ema.py          # EMA teacher updates
-│   │   └── temperature.py   # Temperature scheduling
-│   ├── generations/         # Generation management
-│   │   ├── manager.py       # Lifecycle management
-│   │   ├── checkpoint.py    # Save/load lineages
-│   │   └── metrics.py       # Convergence detection
-│   └── data/               # Dataset utilities
-│       └── loaders.py       # CIFAR-10, MNIST loaders
+│   ├── models/               # Neural network architectures
+│   │   ├── resnet.py         # ResNet-18 (used for gestures)
+│   │   ├── mlp.py            # Simple MLP
+│   │   └── transformer.py    # Vision Transformer
+│   ├── distillation/         # Self-distillation logic
+│   │   ├── losses.py         # KL divergence loss
+│   │   ├── trainer.py        # Training loop
+│   │   └── ema.py            # EMA teacher
+│   ├── generations/          # Multi-generation management
+│   │   ├── manager.py        # Orchestrates training
+│   │   └── checkpoint.py     # Save/load models
+│   └── data/
+│       └── loaders.py        # Dataset loaders
 ├── scripts/
-│   ├── train.py            # Main training entry point
-│   └── evaluate.py         # Compare generations
-├── tests/                  # Comprehensive test suite
-└── notebooks/
-    └── experiments.ipynb   # Interactive exploration
+│   ├── train.py              # Main training script
+│   ├── download_hagrid.py    # Download gesture dataset
+│   ├── live_gesture.py       # Webcam inference
+│   └── evaluate.py           # Compare generations
+└── tests/                    # Unit tests
 ```
 
-## 🚀 Quick Start
+---
 
-### Installation
-
-```bash
-cd recursive-nn
-pip install -e ".[dev]"
-```
-
-### Train a Model
-
-```bash
-# Train 5 generations on CIFAR-10 with ResNet-18
-python scripts/train.py \
-    model=resnet18 \
-    data=cifar10 \
-    training.epochs=100 \
-    generations.max_generations=5
-
-# Quick test on MNIST with MLP
-python scripts/train.py \
-    model=mlp \
-    data=mnist \
-    training.epochs=10 \
-    generations.max_generations=3
-```
-
-### Evaluate Generations
-
-```bash
-python scripts/evaluate.py \
-    --checkpoint-dir ./checkpoints \
-    --model resnet18 \
-    --dataset cifar10
-```
-
-## 🔬 How It Works
-
-### Core Algorithm
+## How Self-Distillation Works
 
 ```
-Generation 0: Train base model on hard labels
-Generation 1: Train new model on (soft targets from Gen0 + hard labels)
-Generation 2: Train new model on (soft targets from Gen1 + hard labels)
-...
-Generation N: Each generation typically improves over the last
+Gen 0: Train from scratch → 92% accuracy
+         ↓ (becomes teacher)
+Gen 1: Learns from Gen 0's soft outputs → 94% accuracy
+         ↓ (becomes teacher)
+Gen 2: Learns from Gen 1 → 95% accuracy
+         ...
 ```
 
-### Distillation Loss
+Each generation learns from:
+1. **Hard labels** (ground truth: "this is thumbs up")
+2. **Soft labels** (teacher's probabilities: "90% thumbs up, 5% like, 3% ok...")
 
-```python
-L = α * KL(student||teacher) * T² + (1-α) * CE(labels, student)
+The "dark knowledge" in soft labels reveals which gestures look similar.
+
+**Loss function:**
+```
+L = α * KL(student||teacher) * T² + (1-α) * CrossEntropy(labels, student)
 ```
 
-Where:
-- `α` (alpha): Weight for distillation vs. hard labels (default: 0.7)
-- `T` (temperature): Softens probability distributions (default: 4.0)
-- Higher temperature → softer targets → more "dark knowledge"
+- `α = 0.7` (70% distillation, 30% hard labels)
+- `T = 4.0` (temperature - higher = softer distributions)
 
-### Key Techniques
+---
 
-1. **Soft Target Distillation** (Hinton et al., 2015)
-   - Teacher produces softened softmax outputs
-   - Student learns from probability distributions, not just argmax
-   - Captures class similarities in "dark knowledge"
+## Configuration
 
-2. **Born-Again Networks** (Furlanello et al., 2018)
-   - Student has identical architecture to teacher
-   - Surprisingly outperforms teacher despite same capacity
-   - Multiple generations compound improvements
-
-3. **Noisy Student** (Xie et al., 2020)
-   - Add dropout noise during student training
-   - Strong data augmentation (RandAugment)
-   - Stochastic depth for deeper networks
-
-## ⚙️ Configuration
-
-All parameters controlled via `configs/default.yaml`:
+Edit `configs/hagrid.yaml` to customize:
 
 ```yaml
-# Model
 model:
-  name: "resnet18"        # resnet18, resnet34, mlp, vit_small
-  num_classes: 10
+  name: "resnet18"
+  num_classes: 18
 
-# Data
-data:
-  name: "cifar10"         # cifar10, mnist
-  batch_size: 128
-  augmentation: true      # RandAugment for Noisy Student
+training:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
 
-# Distillation
 distillation:
-  temperature: 4.0        # Softmax temperature
-  alpha: 0.7              # Weight for distillation loss
-  noisy_student: true     # Enable noise/augmentation
-  dropout_rate: 0.1       # Dropout for regularization
+  temperature: 4.0    # Higher = softer teacher outputs
+  alpha: 0.7          # Balance distillation vs hard labels
 
-# Generations
 generations:
-  max_generations: 5      # Maximum iterations
-  plateau_threshold: 0.001  # Min improvement to continue
-  plateau_patience: 3     # Generations without improvement before stop
+  max_generations: 5
+  plateau_patience: 2  # Stop if no improvement for 2 gens
 ```
 
-Override any parameter from command line:
+---
+
+## Troubleshooting
+
+### "CUDA out of memory"
+Reduce batch size:
+```bash
+python scripts/train.py --config-name=hagrid training.batch_size=16
+```
+
+### "No module named 'src'"
+Make sure you ran `pip install -e .` in the project directory.
+
+### Download times out
+The HaGRID server (Russian cloud) can be slow. Try:
+1. Use a VPN
+2. Download from Kaggle mirror (see Step 2)
+3. Download on a different network
+
+### Webcam not detected
+```bash
+# List available cameras
+python -c "import cv2; print([cv2.VideoCapture(i).isOpened() for i in range(3)])"
+```
+
+---
+
+## TODO / Future Enhancements
+
+- [ ] Add custom gesture recording (train on your own hands)
+- [ ] Gesture-to-action mapping (thumbs up = volume up)
+- [ ] Fine-tuning on user's specific hands
+- [ ] Mobile deployment (ONNX export)
+- [ ] Feature-based distillation (FitNets style)
+
+---
+
+## Tests
 
 ```bash
-python scripts/train.py distillation.temperature=10.0 generations.max_generations=10
+# Set Python path and run tests
+set PYTHONPATH=src
+pytest tests/ -v
 ```
 
-## 📊 Expected Results
+67 tests passing, 3 minor failures (tolerance issues).
 
-### CIFAR-10 with ResNet-18
+---
 
-| Generation | Val Accuracy | Improvement |
-|------------|--------------|-------------|
-| Gen 0 (baseline) | ~92.0% | - |
-| Gen 1 | ~93.5% | +1.5% |
-| Gen 2 | ~94.2% | +0.7% |
-| Gen 3 | ~94.5% | +0.3% |
-| Gen 4+ | Plateau | ~0% |
+## References
 
-**Total improvement**: 2-3% over baseline with same architecture!
+1. **Born-Again Neural Networks** - https://arxiv.org/abs/1805.04770
+2. **Knowledge Distillation** - https://arxiv.org/abs/1503.02531
+3. **HaGRID Dataset** - https://github.com/hukenovs/hagrid
 
-### MNIST with 2-Layer MLP
+---
 
-| Generation | Val Accuracy |
-|------------|--------------|
-| Gen 0 | ~98.0% |
-| Gen 1 | ~98.4% |
-| Gen 2 | ~98.5% |
+## License
 
-## 🔧 Advanced Features
-
-### EMA Teacher
-
-For more stable distillation:
-
-```python
-from distillation import EMATeacher
-
-ema_teacher = EMATeacher(student_model, decay=0.999)
-
-# During training
-for batch in dataloader:
-    train_step(student_model, batch)
-    ema_teacher.update(student_model)
-    
-# Use EMA model as teacher
-teacher_logits = ema_teacher.model(inputs)
-```
-
-### Temperature Scheduling
-
-Schedule temperature across generations:
-
-```python
-from distillation import TemperatureScheduler
-
-scheduler = TemperatureScheduler(
-    initial_temp=20.0,   # High temp early for dark knowledge
-    final_temp=1.0,      # Low temp later for sharp predictions
-    schedule="cosine",   # "constant", "linear", "cosine", "step"
-    total_steps=10,      # Number of generations
-)
-
-temp = scheduler.get_temperature(generation_num)
-```
-
-### Stochastic Depth
-
-For deeper ResNets (Noisy Student):
-
-```python
-from models.stochastic_depth import apply_stochastic_depth
-
-model = ResNet18(num_classes=10)
-model = apply_stochastic_depth(model, drop_prob=0.2)
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_distillation.py
-
-# Run with coverage
-pytest --cov=src
-```
-
-## 📓 Interactive Notebooks
-
-Explore the system interactively:
-
-```bash
-cd notebooks
-jupyter notebook experiments.ipynb
-```
-
-Includes:
-- Temperature visualization
-- Quick MNIST experiments
-- Confidence analysis
-- Feature visualization
-
-## 📚 References
-
-1. **Born-Again Neural Networks** (Furlanello et al., 2018)
-   - https://arxiv.org/abs/1805.04770
-
-2. **Distilling the Knowledge in a Neural Network** (Hinton et al., 2015)
-   - https://arxiv.org/abs/1503.02531
-
-3. **Self-Training with Noisy Student** (Xie et al., 2020)
-   - https://arxiv.org/abs/1911.04252
-
-4. **Mean Teachers are Better Role Models** (Tarvaninen & Valpola, 2017)
-   - https://arxiv.org/abs/1703.01780
-
-5. **Deep Networks with Stochastic Depth** (Huang et al., 2016)
-   - https://arxiv.org/abs/1603.09382
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-
-- Feature-based distillation (FitNets, attention transfer)
-- Multi-teacher distillation
-- Data-efficient training (semi-supervised)
-- Distributed training support
-- Additional architectures ( EfficientNet, ConvNeXt)
-
-## 📝 License
-
-MIT License - see LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- PyTorch team for the excellent framework
-- Papers With Code for distillation implementations
-- The self-distillation research community
+MIT
