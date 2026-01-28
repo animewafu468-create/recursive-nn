@@ -1,0 +1,52 @@
+# HaGRID Hand Gesture Recognition Configuration
+
+# Model - ResNet18 works great for gestures
+model:
+  name: "resnet18"
+  num_classes: 18  # 18 HaGRID gestures
+
+# Dataset
+data:
+  name: "hagrid"
+  batch_size: 64
+  num_workers: 4
+  augmentation: true
+  image_size: 224
+
+# Training
+training:
+  epochs: 50
+  learning_rate: 0.01
+  momentum: 0.9
+  weight_decay: 0.0001
+  scheduler: "cosine"
+  warmup_epochs: 3
+
+# Distillation settings
+distillation:
+  temperature: 4.0
+  alpha: 0.7
+  noisy_student: true
+  dropout_rate: 0.2
+
+# Generation management
+generations:
+  max_generations: 5
+  plateau_threshold: 0.005
+  plateau_patience: 2
+
+# Checkpointing
+checkpoint:
+  save_dir: "./checkpoints/hagrid"
+  save_every: 5
+
+# Logging
+logging:
+  log_dir: "./logs/hagrid"
+  log_every: 50
+
+# Random seed
+seed: 42
+
+# Device
+device: "cuda"

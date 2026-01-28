@@ -1,0 +1,39 @@
+# Self-Distillation Neural Network System
+# Recursively trains improved versions of itself using soft targets from previous generations
+
+[project]
+name = "recursive-nn"
+version = "0.1.0"
+description = "Self-distillation system where neural networks iteratively train improved versions"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "torchvision",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "tensorboard",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "ruff",
+]
+wandb = ["wandb"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

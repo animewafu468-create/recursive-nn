@@ -1,0 +1,51 @@
+# Default configuration for self-distillation training
+
+# Model architecture
+model:
+  name: "resnet18"
+  num_classes: 10
+
+# Dataset
+data:
+  name: "cifar10"
+  batch_size: 128
+  num_workers: 4
+  augmentation: true
+
+# Training
+training:
+  epochs: 100
+  learning_rate: 0.1
+  momentum: 0.9
+  weight_decay: 0.0001
+  scheduler: "cosine"
+  warmup_epochs: 5
+
+# Distillation
+distillation:
+  temperature: 4.0
+  alpha: 0.7  # Weight for distillation loss vs hard label loss
+  noisy_student: true
+  dropout_rate: 0.1
+
+# Generation management
+generations:
+  max_generations: 5
+  plateau_threshold: 0.001  # Min improvement to continue
+  plateau_patience: 3  # Generations without improvement before stopping
+
+# Checkpointing
+checkpoint:
+  save_dir: "./checkpoints"
+  save_every: 10  # epochs
+
+# Logging
+logging:
+  log_dir: "./logs"
+  log_every: 100  # steps
+
+# Random seed
+seed: 42
+
+# Device
+device: "cuda"
